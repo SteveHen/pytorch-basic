@@ -1,147 +1,87 @@
+# Schritt 2: Imports und Datenvorbereitung
+# In diesem Schritt werden benötigte Bibliotheken importiert.
+# torch stellt die Kernfunktionalitäten von PyTorch bereit, während torch.nn Module für den Aufbau von neuronalen Netzwerken und torch.optim Optimierungsalgorithmen enthält. torchvision wird für den Zugriff auf Datensätze und Bildverarbeitungsfunktionen verwendet.
+# Der MNIST-Datensatz wird über torchvision.datasets.MNIST heruntergeladen und in Trainings- und Testdaten aufgeteilt.
+# torch.utils.data.DataLoader erstellt Datenladeprogramme, die das Training des Modells in Mini-Batches ermöglichen.
+
 import torch
-from torch import nn
-from torch.utils.data import DataLoader
-from torchvision import datasets
-from torchvision.transforms import ToTensor
+import torch.nn as nn
+import torch.optim as optim
+import torchvision
+import torchvision.transforms as transforms
+
+# Laden des Datensatzes MNIST und Vorbereitung der Trainings- und Testdaten
+transform = transforms.Compose(
+    [transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
+
+trainset = torchvision.datasets.MNIST(
+    root='./data', train=True, download=True, transform=transform)
+trainloader = torch.utils.data.DataLoader(
+    trainset, batch_size=64, shuffle=True)
+
+testset = torchvision.datasets.MNIST(
+    root='./data', train=False, download=True, transform=transform)
+testloader = torch.utils.data.DataLoader(testset, batch_size=64, shuffle=False)
+
+# Schritt 3: Aufbau des neuronalen Netzwerks
+# Hier wird die Struktur des neuronalen Netzwerks definiert. Die Klasse SimpleNN erbt von nn.Module und definiert die Schichten des Netzwerks. In diesem Fall handelt es sich um ein einfaches Netzwerk mit drei vollständig verbundenen Schichten (Lineare Schichten), die durch ReLU-Aktivierungsfunktionen verbunden sind.
 
 
-# Download training data from open datasets.
-training_data = datasets.FashionMNIST(
-    root="data",
-    train=True,
-    download=True,
-    transform=ToTensor(),
-)
-
-# Download test data from open datasets.
-test_data = datasets.FashionMNIST(
-    root="data",
-    train=False,
-    download=True,
-    transform=ToTensor(),
-)
-
-
-batch_size = 64
-
-# Create data loaders.
-train_dataloader = DataLoader(training_data, batch_size=batch_size)
-test_dataloader = DataLoader(test_data, batch_size=batch_size)
-
-for X, y in test_dataloader:
-    print(f"Shape of X [N, C, H, W]: {X.shape}")
-    print(f"Shape of y: {y.shape} {y.dtype}")
-    break
-
-
-# Get cpu, gpu or mps device for training.
-device = (
-    "cuda"
-    if torch.cuda.is_available()
-    else "mps"
-    if torch.backends.mps.is_available()
-    else "cpu"
-)
-print(f"Using {device} device")
-
-# Define model
-
-
-class NeuralNetwork(nn.Module):
+class SimpleNN(nn.Module):
     def __init__(self):
-        super().__init__()
-        self.flatten = nn.Flatten()
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(28*28, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Linear(512, 10)
-        )
+        super(SimpleNN, self).__init__()
+        self.fc1 = nn.Linear(28 * 28, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 10)
 
     def forward(self, x):
-        x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
-        return logits
+        x = x.view(x.size(0), -1)  # Flatten des Eingabebildes
+        x = torch.relu(self.fc1(x))
+        x = torch.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
 
 
-model = NeuralNetwork().to(device)
-print(model)
+model = SimpleNN()
 
+# Schritt 4: Modelltraining
+# Die Verlustfunktion (hier nn.CrossEntropyLoss) und der Optimierungsalgorithmus (optim.Adam) werden definiert. Das Modell wird über mehrere Epochen hinweg auf den Trainingsdaten trainiert. Im Trainingsschleifen-Codeabschnitt werden Mini-Batches von Daten geladen, das Modell wird vorwärts durchlaufen, der Verlust wird berechnet, Rückwärtsdurchläufe (Backpropagation) werden durchgeführt und die Gewichte des Modells werden aktualisiert.
 
-loss_fn = nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
-
-
-def train(dataloader, model, loss_fn, optimizer):
-    size = len(dataloader.dataset)
-    model.train()
-    for batch, (X, y) in enumerate(dataloader):
-        X, y = X.to(device), y.to(device)
-
-        # Compute prediction error
-        pred = model(X)
-        loss = loss_fn(pred, y)
-
-        # Backpropagation
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
-
-        if batch % 100 == 0:
-            loss, current = loss.item(), (batch + 1) * len(X)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
-
-
-def test(dataloader, model, loss_fn):
-    size = len(dataloader.dataset)
-    num_batches = len(dataloader)
-    model.eval()
-    test_loss, correct = 0, 0
-    with torch.no_grad():
-        for X, y in dataloader:
-            X, y = X.to(device), y.to(device)
-            pred = model(X)
-            test_loss += loss_fn(pred, y).item()
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
-    test_loss /= num_batches
-    correct /= size
-    print(
-        f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
-
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 epochs = 5
-for t in range(epochs):
-    print(f"Epoch {t+1}\n-------------------------------")
-    train(train_dataloader, model, loss_fn, optimizer)
-    test(test_dataloader, model, loss_fn)
-print("Done!")
 
-torch.save(model.state_dict(), "model.pth")
-print("Saved PyTorch Model State to model.pth")
+for epoch in range(epochs):
+    running_loss = 0.0
+    for i, data in enumerate(trainloader, 0):
+        inputs, labels = data
+        optimizer.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+        running_loss += loss.item()
+        if i % 300 == 299:
+            print(
+                f'Epoch: {epoch + 1}, Batch: {i + 1}, Loss: {running_loss / 300}')
+            running_loss = 0.0
 
+print("Training abgeschlossen!")
 
-model = NeuralNetwork().to(device)
-model.load_state_dict(torch.load("model.pth"))
+# Schritt 5: Modellbewertung
+# Nach dem Training wird das trainierte Modell auf dem Testdatensatz evaluiert. Das Modell macht Vorhersagen auf den Testdaten, vergleicht diese mit den tatsächlichen Labels und berechnet die Genauigkeit des Modells, um zu überprüfen, wie gut es auf unbekannten Daten generalisiert.
+# Dieses Tutorial bietet eine grundlegende Einführung in das Erstellen, Trainieren und Bewerten eines einfachen neuronalen Netzwerks mit PyTorch auf dem MNIST-Datensatz. Es ist wichtig zu beachten, dass für komplexe Anwendungen weitere Optimierungen, Hyperparameter-Anpassungen und Modifikationen am Modell erforderlich sein können.
 
-
-classes = [
-    "T-shirt/top",
-    "Trouser",
-    "Pullover",
-    "Dress",
-    "Coat",
-    "Sandal",
-    "Shirt",
-    "Sneaker",
-    "Bag",
-    "Ankle boot",
-]
-
-model.eval()
-x, y = test_data[0][0], test_data[0][1]
+correct = 0
+total = 0
 with torch.no_grad():
-    x = x.to(device)
-    pred = model(x)
-    predicted, actual = classes[pred[0].argmax(0)], classes[y]
-    print(f'Predicted: "{predicted}", Actual: "{actual}"')
+    for data in testloader:
+        inputs, labels = data
+        outputs = model(inputs)
+        _, predicted = torch.max(outputs.data, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+
+print(
+    f"Genauigkeit des Modells auf dem Testdatensatz: {100 * correct / total}%")
