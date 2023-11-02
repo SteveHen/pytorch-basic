@@ -1,6 +1,8 @@
 # Schritt 2: Imports und Datenvorbereitung
 # In diesem Schritt werden benötigte Bibliotheken importiert.
-# torch stellt die Kernfunktionalitäten von PyTorch bereit, während torch.nn Module für den Aufbau von neuronalen Netzwerken und torch.optim Optimierungsalgorithmen enthält. torchvision wird für den Zugriff auf Datensätze und Bildverarbeitungsfunktionen verwendet.
+# torch stellt die Kernfunktionalitäten von PyTorch bereit,
+# während torch.nn Module für den Aufbau von neuronalen Netzwerken und
+# torch.optim Optimierungsalgorithmen enthält. torchvision wird für den Zugriff auf Datensätze und Bildverarbeitungsfunktionen verwendet.
 # Der MNIST-Datensatz wird über torchvision.datasets.MNIST heruntergeladen und in Trainings- und Testdaten aufgeteilt.
 # torch.utils.data.DataLoader erstellt Datenladeprogramme, die das Training des Modells in Mini-Batches ermöglichen.
 
@@ -24,19 +26,24 @@ testset = torchvision.datasets.MNIST(
 testloader = torch.utils.data.DataLoader(testset, batch_size=64, shuffle=False)
 
 # Schritt 3: Aufbau des neuronalen Netzwerks
-# Hier wird die Struktur des neuronalen Netzwerks definiert. Die Klasse SimpleNN erbt von nn.Module und definiert die Schichten des Netzwerks. In diesem Fall handelt es sich um ein einfaches Netzwerk mit drei vollständig verbundenen Schichten (Lineare Schichten), die durch ReLU-Aktivierungsfunktionen verbunden sind.
+# Hier wird die Struktur des neuronalen Netzwerks definiert.
+# Die Klasse SimpleNN erbt von nn.Module und definiert die Schichten des Netzwerks.
+# In diesem Fall handelt es sich um ein einfaches Netzwerk mit drei vollständig verbundenen Schichten (Lineare Schichten),
+# die durch ReLU-Aktivierungsfunktionen verbunden sind.
 
 
-class SimpleNN(nn.Module):
+class SimpleNN(nn.Module):  # nn.Module ist die Basisklasse für alle neuronalen Netzwerke in PyTorch
     def __init__(self):
         super(SimpleNN, self).__init__()
         self.fc1 = nn.Linear(28 * 28, 128)
         self.fc2 = nn.Linear(128, 64)
         self.fc3 = nn.Linear(64, 10)
 
-    def forward(self, x):
+    def forward(self, x):  # forward() definiert, wie die Daten durch das Netzwerk fließen
         x = x.view(x.size(0), -1)  # Flatten des Eingabebildes
+        # ReLU-Aktivierungsfunktion für die erste Schicht fc1
         x = torch.relu(self.fc1(x))
+        # ReLU-Aktivierungsfunktion für die zweite Schicht fc2
         x = torch.relu(self.fc2(x))
         x = self.fc3(x)
         return x
@@ -45,24 +52,28 @@ class SimpleNN(nn.Module):
 model = SimpleNN()
 
 # Schritt 4: Modelltraining
-# Die Verlustfunktion (hier nn.CrossEntropyLoss) und der Optimierungsalgorithmus (optim.Adam) werden definiert. Das Modell wird über mehrere Epochen hinweg auf den Trainingsdaten trainiert. Im Trainingsschleifen-Codeabschnitt werden Mini-Batches von Daten geladen, das Modell wird vorwärts durchlaufen, der Verlust wird berechnet, Rückwärtsdurchläufe (Backpropagation) werden durchgeführt und die Gewichte des Modells werden aktualisiert.
+# Die Verlustfunktion (hier nn.CrossEntropyLoss) und der Optimierungsalgorithmus (optim.Adam) werden definiert.
+# Das Modell wird über mehrere Epochen hinweg auf den Trainingsdaten trainiert.
+# Im Trainingsschleifen-Codeabschnitt werden Mini-Batches von Daten geladen, das Modell wird vorwärts durchlaufen,
+# der Verlust wird berechnet, Rückwärtsdurchläufe (Backpropagation) werden durchgeführt und die Gewichte des Modells werden aktualisiert.
 
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+criterion = nn.CrossEntropyLoss()  # Verlustfunktion
+optimizer = optim.Adam(model.parameters(), lr=0.001)  # Optimierungsalgorithmus
 
 epochs = 5
 
-for epoch in range(epochs):
+for epoch in range(epochs):  # Trainingsschleife über mehrere Epochen hinweg
     running_loss = 0.0
+    # Trainingsschleife über alle Mini-Batches hinweg
     for i, data in enumerate(trainloader, 0):
         inputs, labels = data
-        optimizer.zero_grad()
+        optimizer.zero_grad()  # Zurücksetzen der Gradienten auf 0
         outputs = model(inputs)
         loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-        running_loss += loss.item()
-        if i % 300 == 299:
+        loss.backward()  # Backpropagation durchführen
+        optimizer.step()  # Gewichte aktualisieren
+        running_loss += loss.item()  # Verlust berechnen
+        if i % 300 == 299:  # Ausgabe des Verlusts alle 300 Mini-Batches
             print(
                 f'Epoch: {epoch + 1}, Batch: {i + 1}, Loss: {running_loss / 300}')
             running_loss = 0.0
@@ -70,8 +81,13 @@ for epoch in range(epochs):
 print("Training abgeschlossen!")
 
 # Schritt 5: Modellbewertung
-# Nach dem Training wird das trainierte Modell auf dem Testdatensatz evaluiert. Das Modell macht Vorhersagen auf den Testdaten, vergleicht diese mit den tatsächlichen Labels und berechnet die Genauigkeit des Modells, um zu überprüfen, wie gut es auf unbekannten Daten generalisiert.
-# Dieses Tutorial bietet eine grundlegende Einführung in das Erstellen, Trainieren und Bewerten eines einfachen neuronalen Netzwerks mit PyTorch auf dem MNIST-Datensatz. Es ist wichtig zu beachten, dass für komplexe Anwendungen weitere Optimierungen, Hyperparameter-Anpassungen und Modifikationen am Modell erforderlich sein können.
+# Nach dem Training wird das trainierte Modell auf dem Testdatensatz evaluiert.
+# Das Modell macht Vorhersagen auf den Testdaten, vergleicht diese mit den tatsächlichen Labels und
+# berechnet die Genauigkeit des Modells, um zu überprüfen, wie gut es auf unbekannten Daten generalisiert.
+# Dieses Tutorial bietet eine grundlegende Einführung in das Erstellen, Trainieren und Bewerten
+# eines einfachen neuronalen Netzwerks mit PyTorch auf dem MNIST-Datensatz.
+# Es ist wichtig zu beachten, dass für komplexe Anwendungen weitere Optimierungen, Hyperparameter-Anpassungen und
+# Modifikationen am Modell erforderlich sein können.
 
 correct = 0
 total = 0
